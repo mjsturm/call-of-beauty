@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call of Beauty: Modern Botanical Garden — Level 1: Butchart Gardens</title>
+<style>
+  :root{
+    --parchment:#f4e8cf; --ink:#3a3128; --ink-soft:#6b5d4a;
+    --gold:#e8b23c; --leaf:#4a7a4e; --alert:#c25b4a; --sky:#bfe0ea;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:#2c3a2e;}
+  body{
+    font-family:"Courier New", Courier, monospace;
+    color:var(--ink);
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; padding:10px;
+  }
+  h1{
+    color:var(--parchment); font-size:17px; letter-spacing:1px;
+    text-align:center; margin:6px 0 2px 0; text-transform:uppercase;
+  }
+  .subtitle{color:#a8bda0; font-size:12px; margin-bottom:8px; text-align:center;}
+  #frame{
+    background:var(--parchment); border:4px solid #8a7350; border-radius:6px;
+    padding:8px; box-shadow:0 6px 24px rgba(0,0,0,.45); max-width:764px; width:100%;
+  }
+  #hud{
+    display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+    justify-content:space-between; padding:4px 2px 8px 2px; font-size:12px;
+  }
+  .meter{flex:1 1 150px; min-width:140px;}
+  .meter label{display:flex; justify-content:space-between; font-weight:bold; font-size:11px; letter-spacing:.5px;}
+  .bar{height:12px; background:#d8c9a8; border:2px solid var(--ink); border-radius:3px; overflow:hidden; margin-top:2px;}
+  .bar > div{height:100%; width:100%; transition:width .2s linear;}
+  #hydFill{background:#4a90c2;}
+  #sunFill{background:linear-gradient(90deg,#e8b23c,#c25b4a);}
+  #clockBox{font-weight:bold; font-size:14px; text-align:center; min-width:84px;}
+  #clockBox.closing{color:var(--alert); animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.45;}}
+  #photoBox{font-size:12px; font-weight:bold; text-align:center;}
+  #canvasWrap{position:relative; line-height:0;}
+  canvas{image-rendering:pixelated; image-rendering:crisp-edges;}
+  #game{width:100%; height:auto; border:2px solid var(--ink); border-radius:3px; background:#000; touch-action:none;}
+  #banner{
+    position:absolute; top:8px; left:50%; transform:translateX(-50%);
+    background:rgba(58,49,40,.92); color:var(--parchment); font-size:12px;
+    padding:6px 14px; border-radius:4px; display:none; white-space:nowrap; z-index:5;
+  }
+  #interactBtn{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    display:none; z-index:5;
+  }
+  button{
+    font-family:inherit; font-weight:bold; font-size:13px; cursor:pointer;
+    background:var(--gold); color:var(--ink); border:2px solid var(--ink);
+    border-radius:4px; padding:8px 16px; box-shadow:0 3px 0 var(--ink);
+  }
+  button:active{transform:translateY(2px); box-shadow:0 1px 0 var(--ink);}
+  button.quiet{background:#d8c9a8;}
+  button:focus-visible{outline:3px solid #4a90c2; outline-offset:2px;}
+  #bottomBar{
+    display:flex; gap:10px; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; padding-top:8px;
+  }
+  #sundialPanel{display:flex; gap:10px; align-items:center; flex:1 1 260px;}
+  #sundial{border:2px solid var(--ink); border-radius:50%; background:#efe0bd; flex-shrink:0;}
+  #scrubWrap{flex:1; font-size:11px;}
+  #scrubWrap label{font-weight:bold; display:block; letter-spacing:.5px;}
+  #scrub{width:100%; accent-color:var(--gold);}
+  #ghostNote{color:var(--ink-soft); min-height:14px;}
+  #dpad{
+    display:grid; grid-template-columns:repeat(3,46px); grid-template-rows:repeat(2,40px);
+    gap:4px; user-select:none;
+  }
+  #dpad button{padding:0; font-size:16px; background:#d8c9a8;}
+  #dpad .u{grid-column:2;} #dpad .l{grid-column:1; grid-row:2;}
+  #dpad .d{grid-column:2; grid-row:2;} #dpad .r{grid-column:3; grid-row:2;}
+  .overlay{
+    position:absolute; inset:0; background:rgba(44,58,46,.93); z-index:10;
+    display:flex; align-items:center; justify-content:center; border-radius:3px;
+  }
+  .card{
+    background:var(--parchment); border:3px solid var(--ink); border-radius:6px;
+    padding:18px 20px; max-width:520px; width:92%; max-height:94%; overflow-y:auto;
+    font-size:13px; line-height:1.55;
+  }
+  .card h2{font-size:16px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;}
+  .card p{margin-bottom:8px;}
+  .card .keys{background:#e9dbb8; border:1px dashed var(--ink-soft); border-radius:4px; padding:8px 10px; font-size:12px; margin:8px 0;}
+  .card .btnRow{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
+  #camScene{border:3px solid var(--ink); border-radius:4px; background:#000; display:block; margin:0 auto; width:100%; max-width:360px; height:auto;}
+  #focusTrack{
+    position:relative; height:20px; background:#d8c9a8; border:2px solid var(--ink);
+    border-radius:3px; margin:10px auto 4px auto; max-width:360px;
+  }
+  #sweetSpot{position:absolute; top:0; bottom:0; background:rgba(74,122,78,.55); border-left:1px solid var(--leaf); border-right:1px solid var(--leaf);}
+  #focusCursor{position:absolute; top:-4px; bottom:-4px; width:4px; background:var(--ink);}
+  #camMsg{text-align:center; min-height:20px; font-weight:bold; font-size:13px;}
+  .stars{color:var(--gold); font-size:18px; letter-spacing:2px;}
+  .polaroids{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0;}
+  .polaroid{
+    background:#fff; border:1px solid #999; padding:5px 5px 3px 5px; width:104px;
+    box-shadow:1px 2px 4px rgba(0,0,0,.25); font-size:9px; text-align:center;
+  }
+  .polaroid .swatch{height:52px; border:1px solid #ccc; margin-bottom:3px;}
+  .rank{font-size:15px; font-weight:bold; color:var(--leaf);}
+  .fail{color:var(--alert);}
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+  @media (max-width:600px){ #dpad{margin:0 auto;} h1{font-size:14px;} }
+</style>
+</head>
+<body>
+<h1>Call of Beauty: Modern Botanical Garden</h1>
+<div class="subtitle">Level 1 · The Butchart Gardens · Victoria, BC — prototype build</div>
+
+<div id="frame">
+  <div id="hud">
+    <div class="meter">
+      <label><span>&#128167; Hydration</span><span id="hydPct">100%</span></label>
+      <div class="bar"><div id="hydFill"></div></div>
+    </div>
+    <div class="meter">
+      <label><span>&#9728;&#65039; Sun exposure</span><span id="sunPct">0%</span></label>
+      <div class="bar"><div id="sunFill"></div></div>
+    </div>
+    <div id="clockBox">8:00 AM</div>
+    <div id="photoBox">&#128247; 0/10<br><span style="font-weight:normal">need 4 (40%)</span></div>
+  </div>
+
+  <div id="canvasWrap">
+    <canvas id="game" width="720" height="528"></canvas>
+    <div id="banner"></div>
+    <button id="interactBtn">&#128247; Take photo</button>
+    <button id="exitBtn" style="position:absolute; bottom:52px; left:50%; transform:translateX(-50%); display:none; z-index:5;">&#128682; End the day at the gate</button>
+    <button id="restBtn" class="quiet" style="position:absolute; bottom:94px; left:50%; transform:translateX(-50%); display:none; z-index:5;">&#127795; Rest in shade (+10 min, R)</button>
+    <div class="overlay" id="startOverlay">
+      <div class="card">
+        <h2>&#127793; Day one: Butchart Gardens</h2>
+        <p>Brittany has one day &mdash; gates open 8 AM, close 6 PM &mdash; to photograph the famous sights of a 55-acre garden built inside an old limestone quarry.</p>
+        <p><b>Time only passes when Brittany acts.</b> Each step costs ~1&#8531; minutes (grass costs more), and every press of the shutter costs 4 minutes &mdash; even the botched ones. Standing still is free: think, study the sundial, plan. In shade, she can also <b>Rest</b> (&#127795; button or R) &mdash; 10 minutes pass and sun exposure heals at double speed, no water spent. In open sun, there is no resting: the shade won't come to her.</p>
+        <p><b>Photograph at least 4 of the 10 targets</b>, keep her hydrated (&#128167;), stay out of the sun (&#9728;&#65039; shade heals as she travels through it), and <b>reach a gate before her time runs out</b>.</p>
+        <p style="font-size:11px; color:var(--ink-soft);">Brittany's husband Matt is also somewhere in the garden &mdash; wandering, chatting with strangers, admiring the roses, and orbiting his wife. He is no help whatsoever, he sometimes wanders absent-mindedly into her shots, but he loves her very much.</p>
+        <div class="keys">
+          <b>Move:</b> arrow keys / WASD / d-pad &nbsp;·&nbsp; <b>Photograph:</b> stand beside a &#128247; marker, press Space or the button<br>
+          <b>Leaving:</b> walk up to a gate (east edge, where Brittany starts) and press the &#128682; button that appears.<br>
+          <b>Shade moves with the sun.</b> Drag the sundial scrubber to preview where shadows will be later.<br>
+          Water fountains (blue &#9962;) refill hydration — <b>but each works only once</b>, then runs dry. Four fountains = four drinks. Spend them wisely. Beware children near famous landmarks.
+        </div>
+        <div class="btnRow"><button id="startBtn">Open the gates</button></div>
+      </div>
+    </div>
+    <div class="overlay" id="camOverlay" style="display:none;">
+      <div class="card" style="max-width:420px;">
+        <h2 id="camTitle">&#128247; Framing…</h2>
+        <canvas id="camScene" width="360" height="200"></canvas>
+        <div id="focusTrack"><div id="sweetSpot"></div><div id="focusCursor"></div></div>
+        <div style="text-align:center; font-size:10px; color:var(--ink-soft);">catch the cursor in the green band — no kids in frame · every press costs 4 min of daylight</div>
+        <div id="camMsg"></div>
+        <div class="btnRow" style="justify-content:center;">
+          <button id="snapBtn">&#128247; Snap (Space)</button>
+          <button id="camDoneBtn" class="quiet" style="display:none;">Keep it</button>
+          <button id="camLeaveBtn" class="quiet">Put camera away</button>
+        </div>
+      </div>
+    </div>
+    <div class="overlay" id="endOverlay" style="display:none;">
+      <div class="card">
+        <h2 id="endTitle"></h2>
+        <p id="endBody"></p>
+        <div class="polaroids" id="endPolaroids"></div>
+        <p id="endScore"></p>
+        <div class="btnRow"><button id="retryBtn">Visit again</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottomBar">
+    <div id="sundialPanel">
+      <canvas id="sundial" width="72" height="72"></canvas>
+      <div id="scrubWrap">
+        <label>&#9203; Sundial — shadow preview</label>
+        <input type="range" id="scrub" min="0" max="180" value="0" step="15">
+        <div id="ghostNote">showing shadows: now</div>
+      </div>
+    </div>
+    <div id="dpad" aria-label="movement controls">
+      <button class="u" data-dir="0,-1" aria-label="up">&#9650;</button>
+      <button class="l" data-dir="-1,0" aria-label="left">&#9664;</button>
+      <button class="d" data-dir="0,1" aria-label="down">&#9660;</button>
+      <button class="r" data-dir="1,0" aria-label="right">&#9654;</button>
+    </div>
+    <button id="leaveBtn" class="quiet" style="display:none;">&#128682; End the day at the gate</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= Call of Beauty — Level 1 prototype =================
+   Tiles: . path | , grass | w water | f flowerbed | t tree | b building
+          C quarry cliff | F drinking fountain | E exit gate
+======================================================================= */
+const TILE = 24, W = 30, H = 22;
+
+const ROWS = [
+"CCCCCCCCCCC,,,,,,tt,,,,,,tt,,,",
+"C...ff....C,,,,,,bbb,,,,,,,tt,",
+"C.ff....f.C,,,,,,bbb,,,,,,,,t,",
+"C...,,...fC..............,,,t,",
+"C...,,....C.,F,,,,,,,,,,.,,,,,",
+"C..........,,,,,,,,,,,,,.,bb,,",
+"C.f....f..C.,,,,,,,,,,,,.,bb,,",
+"C....ff...C.,,,,,,,,,,,,.,,,,,",
+"C..ww.f...C,,tt,,,,tt,,,......",
+"C.........C..................E",
+"CCCCCCCCCCC,,tt,,,tt,,,,..F..E",
+",,tt,,,tt,,,,.ffff.,,,,,.,,,,,",
+",tt,,tt,,,t,,.ffff..ww...,,,,,",
+",tttt,tt,,,,,.ffff.,ww.ffff,,,",
+",t..t,ttt,,.,,,,,,,F,,,,,.bbb,",
+",t.ww.tt,t,.,,,,,,,,,,,,,.bbb,",
+",t.ww,t..t,F.,,,,,,,,,,,,.,,,,",
+",tt,,.t,.t,.,,,,,,,,,,,,,.,,,,",
+",,tt,,tt,t,,,,,,,,,,,,,,,.,,,,",
+"wwww,,tt,,,,,,,,,,,,,,,,,.,tt,",
+"wwwwww,,,,,,,,,,,,,,,,,,,,,,t,",
+"wwwwwwww,,,,,,,,,,,,,,,,,,,,,,",
+];
+const map = ROWS.map(r => r.split(""));
+// dev sanity check
+ROWS.forEach((r,i)=>{ if(r.length!==W) console.warn("row",i,"len",r.length); });
+
+const WALK = new Set([".",",","F","E"]);
+const CASTER = {"t":{min:1,max:3.6},"b":{min:1.4,max:4.6},"C":{min:1.2,max:4.2}};
+
+const TIERS = {
+  L:{label:"Landmark", value:100, band:0.07, kidGap:2.1, speed:3.1},
+  Z:{label:"Plant zone", value:60, band:0.10, kidGap:2.8, speed:2.5},
+  S:{label:"Seasonal", value:80, band:0.12, kidGap:8.0, speed:2.3},
+};
+const TARGETS = [
+  {id:0,name:"Sunken Garden Lookout", x:4, y:3,  tier:"L", hue:"#6a9a55", icon:"mound"},
+  {id:1,name:"Ross Fountain",         x:3, y:8,  tier:"L", hue:"#5b98af", icon:"jets"},
+  {id:2,name:"Bog Garden",            x:8, y:2,  tier:"Z", hue:"#4a7a4e", icon:"bog"},
+  {id:3,name:"Rose Carousel",         x:18,y:2,  tier:"L", hue:"#d96c8a", icon:"carousel", kidGap:1.8},
+  {id:4,name:"Totem Poles",           x:22,y:6,  tier:"Z", hue:"#8a5a30", icon:"totem"},
+  {id:5,name:"Rose Garden",           x:14,y:12, tier:"Z", hue:"#d96c8a", icon:"roses"},
+  {id:6,name:"Star Pond",             x:20,y:12, tier:"Z", hue:"#5b98af", icon:"star"},
+  {id:7,name:"Italian Garden",        x:24,y:13, tier:"Z", hue:"#b06cd9", icon:"formal"},
+  {id:8,name:"Japanese Torii Gate",   x:8, y:16, tier:"L", hue:"#c25b4a", icon:"torii"},
+  {id:9,name:"Himalayan Blue Poppies",x:13,y:17, tier:"S", hue:"#4a90c2", icon:"poppy"},
+];
+const NEED = 4; // 40% of 10
+
+/* ---------------- state ---------------- */
+const DAY_START = 8*60, DAY_END = 18*60;        // 600 in-game minutes
+const STEP_MIN  = (DAY_END - DAY_START) / 450;  // ~1.33 min per path step (450-step budget)
+const GRASS_MIN = STEP_MIN * 1.5;               // ~2 min per grass step
+const SNAP_MIN  = 4;                            // every shutter press costs 4 min of daylight
+const REST_MIN  = 10, REST_HEAL_MULT = 2;       // Shade Rest: 10 min per press, double-rate recovery
+const SUN_PER_MIN = 0.95, SHADE_HEAL_PER_MIN = 0.6;
+
+let S; // game state
+function reset(){
+  S = {
+    t: DAY_START, running:false, over:false,
+    px:28, py:9, face:1,
+    hyd:100, sun:0,
+    shots:{},               // id -> stars
+    usedF:{},               // fountain key -> true once drained
+    moveCd:0, chimed:false,
+    cam:null,               // camera minigame state
+    ghost:0,                // sundial scrub minutes
+  };
+  shadeCache = null;
+  spawnNPCs();
+  scrub.value = 0; ghostNote.textContent = "showing shadows: now";
+  updHUD();
+}
+
+/* ---------------- shadows ---------------- */
+let shadeCache = null, shadeCacheT = -1;
+function shadowParams(minutes){
+  const n = Math.min(1, Math.max(0, (minutes - DAY_START)/(DAY_END - DAY_START)));
+  const dx = Math.cos(Math.PI - Math.PI*n);            // -1 (west) -> +1 (east)
+  const dy = -(0.22 + 0.5*Math.sin(Math.PI*n));        // always somewhat north; deepest at noon
+  const len = Math.abs(n-0.5)*2;                       // 1 at 8am/6pm, 0 at 1pm
+  return {dx,dy,len};
+}
+function computeShade(minutes){
+  const {dx,dy,len} = shadowParams(minutes);
+  const mag = Math.hypot(dx,dy)||1, ux=dx/mag, uy=dy/mag;
+  const shade = new Set();
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    const c = map[y][x], cast = CASTER[c];
+    if(!cast) continue;
+    const L = cast.min + (cast.max-cast.min)*len;
+    for(let s=0.7; s<=L; s+=0.5){
+      const sx = Math.round(x+ux*s), sy = Math.round(y+uy*s);
+      if(sx<0||sy<0||sx>=W||sy>=H) continue;
+      if(WALK.has(map[sy][sx])) shade.add(sy*W+sx);
+    }
+  }
+  return shade;
+}
+function currentShade(){
+  const q = Math.floor(S.t/2); // refresh every 2 in-game minutes
+  if(shadeCacheT !== q){ shadeCache = computeShade(S.t); shadeCacheT = q; }
+  return shadeCache;
+}
+
+/* ---------------- input ---------------- */
+const held = {};
+addEventListener("keydown", e=>{
+  if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(e.key)) e.preventDefault();
+  if(S.cam){ if(e.key===" ") snap(); if(e.key==="Escape") closeCam(false); return; }
+  const k = e.key.toLowerCase();
+  if(k==="arrowup"||k==="w") held.u=true;
+  if(k==="arrowdown"||k==="s") held.d=true;
+  if(k==="arrowleft"||k==="a") held.l=true;
+  if(k==="arrowright"||k==="d") held.r=true;
+  if(k==="r") doRest();
+  if(e.key===" ") tryInteract();
+});
+addEventListener("keyup", e=>{
+  const k = e.key.toLowerCase();
+  if(k==="arrowup"||k==="w") held.u=false;
+  if(k==="arrowdown"||k==="s") held.d=false;
+  if(k==="arrowleft"||k==="a") held.l=false;
+  if(k==="arrowright"||k==="d") held.r=false;
+});
+document.querySelectorAll("#dpad button").forEach(b=>{
+  const [dx,dy] = b.dataset.dir.split(",").map(Number);
+  const on = ev=>{ ev.preventDefault(); held["btn"] = [dx,dy]; };
+  const off = ()=>{ held["btn"] = null; };
+  b.addEventListener("pointerdown", on);
+  b.addEventListener("pointerup", off);
+  b.addEventListener("pointerleave", off);
+});
+
+function tryMove(dt){
+  S.moveCd -= dt;
+  if(S.moveCd > 0) return;
+  let dx=0, dy=0;
+  if(held.btn){ [dx,dy]=held.btn; }
+  else{
+    if(held.u) dy=-1; else if(held.d) dy=1;
+    else if(held.l) dx=-1; else if(held.r) dx=1;
+  }
+  if(!dx && !dy) return;
+  if(dx) S.face = dx;
+  const nx=S.px+dx, ny=S.py+dy;
+  if(nx<0||ny<0||nx>=W||ny>=H) return;
+  const c = map[ny][nx];
+  if(!WALK.has(c)) return;
+  S.px=nx; S.py=ny;
+  S.moveCd = 0.12;
+  const grass = c===",";
+  S.hyd -= grass ? 1.15 : 0.75;
+  if(c==="F"){
+    const key = ny*W+nx;
+    if(!S.usedF[key]){
+      S.usedF[key] = true; S.hyd = 100;
+      beep(600,.07); beep(760,.07,.07);
+      showBanner("\uD83D\uDCA7 Refilled! This fountain has run dry for the day.", 2.5);
+    }
+  }
+  if(S.hyd <= 0){ updHUD(); return endDay("thirst"); }
+  passTime(grass ? GRASS_MIN : STEP_MIN);                       // the clock moves because Brittany did
+  updHUD();
+}
+
+/* Advance the game clock by `mins` — the ONLY way time passes.
+   Applies sun exposure/recovery for the current tile, fires the
+   closing chime, and ends the day when appropriate.
+   Returns false if the day (or Brittany) ended during this spend. */
+function passTime(mins, healMult){
+  if(S.over) return false;
+  healMult = healMult || 1;
+  const shaded = currentShade().has(S.py*W + S.px);
+  S.t = Math.min(DAY_END, S.t + mins);
+  if(shaded) S.sun = Math.max(0, S.sun - SHADE_HEAL_PER_MIN*mins*healMult);
+  else       S.sun += SUN_PER_MIN*mins;
+  if(!S.chimed && S.t >= 17*60){
+    S.chimed = true;
+    showBanner("\uD83D\uDD14 “The garden will be closing in one hour.”", 4);
+    beep(740,.25); beep(590,.3,.28);
+  }
+  if(S.sun >= 100){ endDay("burn"); return false; }
+  if(S.t >= DAY_END){ endDay(onExit() ? "day" : "locked"); return false; }
+  return true;
+}
+
+/* Shade Rest: available only on a shaded tile. Spends REST_MIN of game
+   time at zero hydration cost; sun exposure heals at double rate. */
+function doRest(){
+  if(!S.running || S.over || S.cam) return;
+  if(!currentShade().has(S.py*W + S.px)) return;
+  beep(440,.08); beep(392,.1,.09);   // soft settling-onto-a-bench sound
+  passTime(REST_MIN, REST_HEAL_MULT);
+  updHUD();
+}
+
+/* ---------------- interaction ---------------- */
+function nearTarget(){
+  return TARGETS.find(t => Math.abs(t.x-S.px)<=1 && Math.abs(t.y-S.py)<=1);
+}
+function onExit(){
+  for(const [dx,dy] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]){
+    const x=S.px+dx, y=S.py+dy;
+    if(x>=0&&y>=0&&x<W&&y<H&&map[y][x]==="E") return true;
+  }
+  return false;
+}
+function tryInteract(){
+  const t = nearTarget();
+  if(t) openCam(t);
+}
+
+/* ---------------- camera minigame ---------------- */
+const camOverlay = el("camOverlay"), camScene = el("camScene"), cctx = camScene.getContext("2d");
+const focusCursor = el("focusCursor"), sweetSpot = el("sweetSpot"), camMsg = el("camMsg");
+const camTitle = el("camTitle"), snapBtn = el("snapBtn"), camDoneBtn = el("camDoneBtn"), camLeaveBtn = el("camLeaveBtn");
+
+function openCam(target){
+  const tier = TIERS[target.tier];
+  S.cam = {
+    target, tier, ph:0,
+    kidGap: target.kidGap || tier.kidGap,
+    kids: [], nextKid: 0.4 + Math.random(),
+    nextMatt: 4 + Math.random()*8,   // fame-independent: husbands ignore the Crowd Rule
+    result: null,
+  };
+  camTitle.innerHTML = "&#128247; " + target.name + " <span style='font-weight:normal;font-size:11px'>(" + tier.label + ")</span>";
+  camMsg.textContent = "";
+  camDoneBtn.style.display = "none"; snapBtn.style.display = "";
+  const bandW = tier.band*2*100;
+  sweetSpot.style.width = bandW + "%";
+  sweetSpot.style.left = (50 - bandW/2) + "%";
+  camOverlay.style.display = "flex";
+}
+function closeCam(keep){
+  if(keep && S.cam && S.cam.result){
+    const {target, result} = S.cam;
+    S.shots[target.id] = Math.max(S.shots[target.id]||0, result);
+    beep(660,.09); beep(880,.09,.1);
+  }
+  S.cam = null;
+  camOverlay.style.display = "none";
+  updHUD();
+}
+snapBtn.addEventListener("click", snap);
+camDoneBtn.addEventListener("click", ()=>closeCam(true));
+camLeaveBtn.addEventListener("click", ()=>closeCam(!!(S.cam&&S.cam.result)));
+
+function snap(){
+  const c = S.cam; if(!c || c.result && camDoneBtn.style.display!=="none") return;
+  const alive = passTime(SNAP_MIN);   // every press spends 4 min of daylight — hits AND misses
+  updHUD();
+  if(!alive) return;                  // the day (or Brittany) ended mid-snap
+  const pos = 0.5 + 0.5*Math.sin(c.ph);              // 0..1
+  const bomber = c.kids.find(k => k.x > 0.14 && k.x < 0.86);
+  const dist = Math.abs(pos - 0.5);
+  if(bomber){
+    if(bomber.isMatt){
+      camMsg.innerHTML = "<span class='fail'>MATTBOMBED!</span> He's waving. He loves you. <span style='color:#d96c8a'>\u2665</span> (−4 min)";
+      beep(392,.12); beep(494,.12,.11); beep(587,.16,.22);   // a fond little major arpeggio
+    }else{
+      camMsg.innerHTML = "<span class='fail'>PHOTOBOMBED! A small child beams at the lens. (−4 min)</span>";
+      beep(180,.15);
+    }
+    c.flash = 0.5; return;
+  }
+  if(dist > c.tier.band){
+    camMsg.innerHTML = "<span class='fail'>Blurry… steady the focus. (−4 min)</span>";
+    beep(220,.12); c.flash = 0.5; return;
+  }
+  const stars = dist <= c.tier.band*0.34 ? 3 : dist <= c.tier.band*0.7 ? 2 : 1;
+  c.result = stars;
+  camMsg.innerHTML = "Beautiful! <span class='stars'>" + "&#9733;".repeat(stars) + "&#9734;".repeat(3-stars) + "</span>";
+  camDoneBtn.style.display = ""; snapBtn.style.display = "none";
+  c.flash = 0.5; beep(520,.08); beep(780,.1,.09);
+}
+
+function updateCam(dt){
+  const c = S.cam;
+  c.ph += dt * c.tier.speed;
+  // kids
+  c.nextKid -= dt;
+  if(c.nextKid <= 0){
+    c.kids.push({x:-0.12, spd:(0.38+Math.random()*0.3), c: pick(["#c25b4a","#4a90c2","#e8b23c","#7a4ac2"]) , h: 0.62+Math.random()*0.1});
+    c.nextKid = c.kidGap * (0.6 + Math.random()*0.8);
+  }
+  // the Mattbomb: slow, rare, loving; one Matt at a time
+  c.nextMatt -= dt;
+  if(c.nextMatt <= 0 && !c.kids.some(k=>k.isMatt)){
+    c.kids.push({x:-0.16, spd:0.15+Math.random()*0.05, isMatt:true, h:0.58});
+    c.nextMatt = 11 + Math.random()*9;
+  }
+  c.kids.forEach(k=>k.x += k.spd*dt);
+  c.kids = c.kids.filter(k=>k.x < 1.15);
+  if(c.flash) c.flash = Math.max(0, c.flash - dt);
+  // draw
+  const pos = 0.5 + 0.5*Math.sin(c.ph);
+  focusCursor.style.left = "calc(" + (pos*100) + "% - 2px)";
+  drawScene(c);
+}
+function drawScene(c){
+  const w = camScene.width, h = camScene.height, t = c.target;
+  cctx.fillStyle = "#cfe6d8"; cctx.fillRect(0,0,w,h);           // sky-ish
+  cctx.fillStyle = "#9cc48a"; cctx.fillRect(0,h*0.62,w,h*0.38); // ground
+  drawTargetArt(cctx, t, w, h);
+  // kids (and sometimes Matt)
+  c.kids.forEach(k=>{
+    const kx = k.x*w, ky = h*k.h + h*0.2;
+    if(k.isMatt){
+      const wave = Math.sin(Date.now()/180) > 0;
+      cctx.fillStyle = "#4a7a4e"; cctx.fillRect(kx-9, ky-46, 18, 5);          // cap
+      cctx.fillStyle = "#e8c9a0"; cctx.fillRect(kx-7, ky-41, 14, 12);         // head
+      cctx.fillStyle = "#3a3128"; cctx.fillRect(kx-4, ky-37, 2, 2); cctx.fillRect(kx+2, ky-37, 2, 2); // happy eyes
+      cctx.fillRect(kx-3, ky-33, 6, 2);                                        // beaming
+      cctx.fillStyle = "#6b8f4e"; cctx.fillRect(kx-10, ky-29, 20, 20);        // olive shirt
+      cctx.fillStyle = "#c9b184"; cctx.fillRect(kx-10, ky-9, 20, 9);          // khakis
+      cctx.fillStyle = "#e8c9a0"; cctx.fillRect(kx+10, ky-29, 5, wave?-14:6); // waving arm
+      cctx.fillStyle = "#d96c8a"; cctx.font = "13px monospace"; cctx.textAlign = "center";
+      const bob = Math.sin(Date.now()/300)*3;
+      cctx.fillText("\u2665", kx-14, ky-50+bob);
+      cctx.fillText("\u2665", kx+16, ky-56-bob);
+    }else{
+      cctx.fillStyle = "#e8c9a0"; cctx.fillRect(kx-6, ky-26, 12, 10);      // head
+      cctx.fillStyle = k.c;       cctx.fillRect(kx-8, ky-16, 16, 16);      // body
+      cctx.fillStyle = "#3a3128"; cctx.fillRect(kx-7, ky, 5, 6); cctx.fillRect(kx+2, ky, 5, 6);
+    }
+  });
+  // viewfinder
+  cctx.strokeStyle = "rgba(58,49,40,.8)"; cctx.lineWidth = 2;
+  cctx.strokeRect(w*0.14, h*0.08, w*0.72, h*0.84);
+  cctx.beginPath(); cctx.moveTo(w/2-8,h/2); cctx.lineTo(w/2+8,h/2); cctx.moveTo(w/2,h/2-8); cctx.lineTo(w/2,h/2+8); cctx.stroke();
+  if(c.flash){ cctx.fillStyle = "rgba(255,255,255,"+c.flash+")"; cctx.fillRect(0,0,w,h); }
+}
+function drawTargetArt(g, t, w, h){
+  const cx = w/2, gy = h*0.62;
+  g.save();
+  switch(t.icon){
+    case "mound":
+      g.fillStyle="#6a9a55"; g.beginPath(); g.ellipse(cx,gy,90,42,0,Math.PI,0); g.fill();
+      g.fillStyle="#d9c49a"; g.fillRect(cx-6,gy-58,12,20);
+      dotFlowers(g,cx-80,gy-6,160,["#d96c8a","#e8b23c","#b06cd9"]); break;
+    case "jets":
+      g.fillStyle="#5b98af"; g.fillRect(cx-70,gy-8,140,26);
+      g.fillStyle="#bfe0ea";
+      for(let i=-2;i<=2;i++){ g.fillRect(cx+i*22-2, gy-8-46+Math.abs(i)*10, 4, 46-Math.abs(i)*10); }
+      break;
+    case "bog":
+      g.fillStyle="#4a7a4e"; g.fillRect(cx-80,gy-10,160,26);
+      g.fillStyle="#2c5236"; for(let i=0;i<7;i++) g.fillRect(cx-75+i*23, gy-34, 6, 26);
+      break;
+    case "carousel":
+      g.fillStyle="#d96c8a"; g.beginPath(); g.moveTo(cx-70,gy-46); g.lineTo(cx+70,gy-46); g.lineTo(cx,gy-86); g.fill();
+      g.fillStyle="#f4e8cf"; g.fillRect(cx-64,gy-46,128,44);
+      g.fillStyle="#8a5a30"; for(let i=0;i<5;i++) g.fillRect(cx-58+i*28, gy-42, 5, 40);
+      break;
+    case "totem":
+      g.fillStyle="#8a5a30"; g.fillRect(cx-26,gy-92,20,92); g.fillRect(cx+8,gy-74,20,74);
+      g.fillStyle="#c25b4a"; g.fillRect(cx-26,gy-92,20,12); g.fillRect(cx+8,gy-74,20,12);
+      g.fillStyle="#e8b23c"; g.fillRect(cx-26,gy-56,20,10); g.fillRect(cx+8,gy-40,20,10);
+      break;
+    case "roses":
+      dotFlowers(g,cx-90,gy-30,180,["#d96c8a","#c25b4a","#f4e8cf"],26);
+      g.fillStyle="#8a5a30"; g.fillRect(cx-70,gy-64,4,40); g.fillRect(cx+66,gy-64,4,40);
+      g.strokeStyle="#8a5a30"; g.lineWidth=4; g.beginPath(); g.arc(cx-2,gy-60,68,Math.PI,0); g.stroke();
+      break;
+    case "star":
+      g.fillStyle="#5b98af";
+      g.beginPath();
+      for(let i=0;i<24;i++){ const r=(i%2? 34:62), a=i*Math.PI/12; g.lineTo(cx+r*Math.cos(a), gy-6+r*Math.sin(a)*0.5); }
+      g.closePath(); g.fill();
+      g.fillStyle="#4a7a4e"; g.fillRect(cx-4,gy-16,8,8);
+      break;
+    case "formal":
+      g.fillStyle="#9a8f82"; g.fillRect(cx-84,gy-14,168,10);
+      g.fillStyle="#2c5236"; for(let i=0;i<6;i++) g.fillRect(cx-78+i*30, gy-44, 12, 30);
+      dotFlowers(g,cx-70,gy+2,140,["#b06cd9","#e8b23c"]); break;
+    case "torii":
+      g.fillStyle="#c25b4a";
+      g.fillRect(cx-58,gy-96,14,96); g.fillRect(cx+44,gy-96,14,96);
+      g.fillRect(cx-74,gy-100,148,12); g.fillRect(cx-64,gy-74,128,9);
+      g.fillStyle="#2c5236"; for(let i=0;i<4;i++) g.fillRect(cx-100+i*70, gy-24, 8, 24);
+      break;
+    case "poppy":
+      dotFlowers(g,cx-90,gy-26,180,["#4a90c2","#5b98af","#7ab8d9"],22);
+      g.fillStyle="#4a7a4e"; for(let i=0;i<9;i++) g.fillRect(cx-86+i*21, gy-8, 3, 16);
+      break;
+  }
+  g.restore();
+}
+function dotFlowers(g,x,y,w,colors,n){
+  n = n||18;
+  for(let i=0;i<n;i++){
+    g.fillStyle = colors[i%colors.length];
+    const fx = x + (i*97)%w, fy = y + ((i*53)%22);
+    g.fillRect(fx, fy, 7, 7);
+  }
+}
+
+/* ---------------- day / meters ---------------- */
+const banner = el("banner");
+let bannerT = 0;
+function showBanner(msg, secs){
+  banner.textContent = msg; banner.style.display = "block"; bannerT = secs||3;
+}
+
+function update(dt){
+  if(!S.running || S.over) return;
+  if(bannerT>0){ bannerT-=dt; if(bannerT<=0) banner.style.display="none"; }
+  updateNPCs(dt);               // cosmetic only — the world stays alive while Brittany thinks
+  if(S.cam){ updateCam(dt); }   // focus ring & kids animate in real time; the CLOCK only moves on snaps
+  else{ tryMove(dt); }
+}
+
+function endDay(kind){
+  if(S.cam) closeCam(!!S.cam.result);
+  S.over = true; S.running = false;
+  const shot = Object.keys(S.shots).length;
+  const score = TARGETS.reduce((a,t)=> a + (S.shots[t.id]? TIERS[t.tier].value*S.shots[t.id] : 0), 0);
+  const passed = kind==="day" && shot >= NEED;
+  const title = el("endTitle"), body = el("endBody");
+  if(kind==="thirst"){ title.innerHTML = "&#128167; <span class='fail'>Parched!</span>"; body.textContent = "Brittany was found napping face-first in the delphiniums. The gift-shop staff were very kind about it. Hydrate at the blue fountains next time."; }
+  else if(kind==="burn"){ title.innerHTML = "&#9728;&#65039; <span class='fail'>Sunburned!</span>"; body.textContent = "Brittany retreats to the parking lot, pink as a peony. The shade moves with the sun — use the sundial to plan around it."; }
+  else if(kind==="locked"){ title.innerHTML = "&#128274; <span class='fail'>Locked in!</span>"; body.textContent = "The gates clicked shut at 6 PM sharp. Brittany spent the night arguing philosophy with a very patient owl in the Japanese Garden. Reach a gate before close."; }
+  else if(!passed){ title.innerHTML = "&#128247; <span class='fail'>Not enough photos</span>"; body.textContent = "Brittany made it out on time, but her journal needs at least " + NEED + " of the 10 sights. The docents believe in her."; }
+  else{ title.innerHTML = "&#127793; Day complete!"; body.textContent = "Brittany strolls out at " + fmt(S.t) + " with a camera full of Butchart. Next stop on the pilgrimage: Montreal."; }
+
+  const pol = el("endPolaroids"); pol.innerHTML = "";
+  TARGETS.forEach(t=>{
+    const st = S.shots[t.id];
+    const d = document.createElement("div"); d.className = "polaroid";
+    d.style.opacity = st? 1 : .35;
+    d.innerHTML = "<div class='swatch' style='background:"+t.hue+"'></div>" + t.name +
+      "<div class='stars'>" + (st? "&#9733;".repeat(st) : "&mdash;") + "</div>";
+    pol.appendChild(d);
+  });
+  const rank = score>=2000?"Curator":score>=1500?"Docent":score>=1000?"Member":score>=500?"Enthusiast":"Visitor";
+  el("endScore").innerHTML = "Photos: <b>" + shot + "/10</b> (needed " + NEED + ") &nbsp;·&nbsp; Score: <b>" + score +
+    "</b><br>Botanist rank: <span class='rank'>" + rank + "</span>" + (passed? " &nbsp;&#127942;":"");
+  el("endOverlay").style.display = "flex";
+}
+
+/* ---------------- HUD ---------------- */
+function updHUD(){
+  el("hydFill").style.width = Math.max(0,S.hyd) + "%";
+  el("sunFill").style.width = Math.min(100,S.sun) + "%";
+  el("hydPct").textContent = Math.max(0,Math.round(S.hyd)) + "%";
+  el("sunPct").textContent = Math.min(100,Math.round(S.sun)) + "%";
+  const cb = el("clockBox");
+  cb.innerHTML = fmt(S.t) + "<br><span style='font-size:9px;font-weight:normal'>&#8776;" +
+    Math.max(0, Math.floor((DAY_END - S.t)/STEP_MIN)) + " steps left</span>";
+  cb.classList.toggle("closing", S.t >= 17*60);
+  el("photoBox").innerHTML = "&#128247; " + Object.keys(S.shots).length + "/10<br><span style='font-weight:normal'>need "+NEED+" (40%)</span>";
+  const t = nearTarget();
+  const ib = el("interactBtn");
+  if(t && !S.cam && S.running){
+    const done = S.shots[t.id];
+    ib.style.display = "block";
+    ib.innerHTML = "&#128247; " + (done? "Retake: " : "Photograph ") + t.name + (done? " ("+"&#9733;".repeat(done)+")" : "");
+  } else ib.style.display = "none";
+  el("leaveBtn").style.display = (onExit() && S.running) ? "" : "none";
+  el("exitBtn").style.display = (onExit() && S.running && !S.cam) ? "block" : "none";
+  el("restBtn").style.display = (S.running && !S.cam && !S.over && currentShade().has(S.py*W+S.px)) ? "block" : "none";
+}
+el("interactBtn").addEventListener("click", tryInteract);
+el("leaveBtn").addEventListener("click", ()=>endDay("day"));
+el("exitBtn").addEventListener("click", ()=>endDay("day"));
+el("restBtn").addEventListener("click", doRest);
+
+function fmt(min){
+  let h = Math.floor(min/60), m = Math.floor(min%60);
+  const ap = h>=12? "PM":"AM"; if(h>12) h-=12;
+  return h + ":" + String(m).padStart(2,"0") + " " + ap;
+}
+
+/* ---------------- ambient NPCs (PURELY COSMETIC) ----------------
+   Matt (Brittany's husband) + a few garden visitors. They have NO
+   gameplay effect: no collision, no meters, no clock, no score.
+   They animate in real time, since they exist outside Brittany's
+   action-driven clock — the world is alive even while she thinks. */
+
+const REACHABLE = (()=>{ // all tiles reachable from the entrance
+  const seen = new Set(), q = [[28,9]], out = [];
+  seen.add(9*W+28);
+  while(q.length){
+    const [x,y] = q.shift(); out.push([x,y]);
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(([dx,dy])=>{
+      const nx=x+dx, ny=y+dy, k=ny*W+nx;
+      if(nx>=0&&ny>=0&&nx<W&&ny<H&&!seen.has(k)&&WALK.has(map[ny][nx])){
+        seen.add(k); q.push([nx,ny]);
+      }
+    });
+  }
+  return out;
+})();
+function randReach(){ return REACHABLE[(Math.random()*REACHABLE.length)|0]; }
+function walkableAt(x,y){ return x>=0&&y>=0&&x<W&&y<H&&WALK.has(map[y][x]); }
+function bfsPath(sx,sy,tx,ty){
+  if(sx===tx&&sy===ty) return [];
+  const prev = new Map(), q = [[sx,sy]], sk = sy*W+sx;
+  prev.set(sk, null);
+  let n = 0;
+  while(q.length && n++ < 1200){
+    const [x,y] = q.shift();
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy, k=ny*W+nx;
+      if(!walkableAt(nx,ny) || prev.has(k)) continue;
+      prev.set(k, y*W+x);
+      if(nx===tx&&ny===ty){
+        const path = []; let cur = k;
+        while(cur !== sk){ path.push([cur%W,(cur-cur%W)/W]); cur = prev.get(cur); }
+        return path.reverse();
+      }
+      q.push([nx,ny]);
+    }
+  }
+  return [];
+}
+const VIS_PALETTES = [
+  {shirt:"#c25b4a", hat:"#f4e8cf"},
+  {shirt:"#7a4ac2", hat:null},
+  {shirt:"#4a90c2", hat:"#e8b23c"},
+];
+function mkNPC(x,y){
+  return {pos:{x,y}, path:[], face:1, bubble:null, bubbleT:0, hold:0, timer:1+Math.random()*2};
+}
+function spawnNPCs(){
+  S.visitors = VIS_PALETTES.map(p=>{
+    const [x,y] = randReach();
+    return Object.assign(mkNPC(x,y), {palette:p});
+  });
+  S.matt = Object.assign(mkNPC(27,10), {state:"wander", stateT:5, heartT:2, targetV:0});
+}
+function followPath(n, dt, speed){
+  if(!n.path.length) return true;
+  const [tx,ty] = n.path[0];
+  const dx = tx - n.pos.x, dy = ty - n.pos.y;
+  const d = Math.hypot(dx,dy);
+  if(dx > 0.05) n.face = 1; else if(dx < -0.05) n.face = -1;
+  if(d < 0.08){ n.pos.x = tx; n.pos.y = ty; n.path.shift(); return n.path.length===0; }
+  n.pos.x += (dx/d)*speed*dt; n.pos.y += (dy/d)*speed*dt;
+  return false;
+}
+function mattChoose(){
+  const m = S.matt, r = Math.random();
+  const mx = Math.round(m.pos.x), my = Math.round(m.pos.y);
+  if(r < 0.4){                                   // aimless wander
+    m.state = "wander";
+    const [x,y] = randReach();
+    m.path = bfsPath(mx,my,x,y);
+  } else if(r < 0.65){                           // appreciate a feature
+    m.state = "appreciate";
+    const t = TARGETS[(Math.random()*TARGETS.length)|0];
+    const spots = [[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[t.x+dx,t.y+dy]).filter(([x,y])=>walkableAt(x,y));
+    if(spots.length){ const [x,y]=spots[(Math.random()*spots.length)|0]; m.path = bfsPath(mx,my,x,y); m.lookAt = t; }
+  } else if(r < 0.85 && S.visitors.length){      // chat with a visitor
+    m.state = "chat";
+    m.targetV = (Math.random()*S.visitors.length)|0;
+    const v = S.visitors[m.targetV];
+    m.path = bfsPath(mx,my,Math.round(v.pos.x),Math.round(v.pos.y));
+  } else {                                       // lovingly orbit Brittany
+    m.state = "orbit";
+    m.path = [];
+  }
+  m.stateT = 7 + Math.random()*6;
+}
+function updateNPCs(dt){
+  if(!S.matt) return;
+  // visitors: gentle random drift
+  S.visitors.forEach(v=>{
+    if(v.bubbleT>0) v.bubbleT -= dt;
+    if(v.hold>0){ v.hold -= dt; return; }
+    if(v.path.length){ followPath(v, dt, 1.2); return; }
+    v.timer -= dt;
+    if(v.timer<=0){
+      const vx=Math.round(v.pos.x), vy=Math.round(v.pos.y);
+      const opts=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[vx+dx,vy+dy]).filter(([x,y])=>walkableAt(x,y));
+      if(opts.length) v.path=[opts[(Math.random()*opts.length)|0]];
+      v.timer = 0.6 + Math.random()*1.6;
+    }
+  });
+  // Matt
+  const m = S.matt;
+  if(m.bubbleT>0) m.bubbleT -= dt;
+  m.stateT -= dt;
+  if(m.stateT<=0){ mattChoose(); }
+  const mx = Math.round(m.pos.x), my = Math.round(m.pos.y);
+  if(m.state==="orbit"){
+    if(!m.path.length){
+      const ring=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]]
+        .map(([dx,dy])=>[S.px+dx,S.py+dy]).filter(([x,y])=>walkableAt(x,y));
+      if(ring.length){ const [x,y]=ring[(Math.random()*ring.length)|0]; m.path=bfsPath(mx,my,x,y); }
+    }
+    followPath(m, dt, 2.2);
+    m.heartT -= dt;
+    if(m.heartT<=0){ m.bubble="\u2665"; m.bubbleT=1.1; m.heartT=1.8+Math.random(); }
+    if(m.pos.x < S.px) m.face = 1; else m.face = -1;   // gaze at Brittany
+  } else if(m.state==="chat"){
+    const v = S.visitors[m.targetV];
+    const d = Math.hypot(v.pos.x-m.pos.x, v.pos.y-m.pos.y);
+    if(d<=1.25){
+      m.path=[]; v.hold=0.6;
+      if(m.bubbleT<=0){ m.bubble="\u2026"; m.bubbleT=1.2; v.bubble="\u2026"; v.bubbleT=1.2; }
+      m.face = v.pos.x >= m.pos.x ? 1 : -1;
+    } else if(!m.path.length){
+      m.path = bfsPath(mx,my,Math.round(v.pos.x),Math.round(v.pos.y));
+      if(!m.path.length) m.stateT = 0;                  // unreachable — pick a new mood
+      followPath(m, dt, 2.0);
+    } else followPath(m, dt, 2.0);
+  } else if(m.state==="appreciate"){
+    const arrived = followPath(m, dt, 2.0);
+    if(arrived && m.lookAt){
+      m.face = m.lookAt.x >= m.pos.x ? 1 : -1;
+      if(m.bubbleT<=0){ m.bubble="\u2665"; m.bubbleT=1.4; }
+    }
+  } else { // wander
+    if(followPath(m, dt, 1.6)) m.stateT = Math.min(m.stateT, 1.5);
+  }
+}
+function drawBubble(x, y, ch){
+  ctx.fillStyle = "rgba(255,255,255,.95)";
+  ctx.strokeStyle = "#3a3128"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x-9, y-14, 18, 13, 3) : ctx.rect(x-9, y-14, 18, 13);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = ch==="\u2665" ? "#d96c8a" : "#3a3128";
+  ctx.font = "10px monospace"; ctx.textAlign = "center";
+  ctx.fillText(ch, x, y-4);
+}
+function drawPerson(n, kind){
+  const px = n.pos.x*TILE, py = n.pos.y*TILE;
+  ctx.save();
+  if(n.face<0){ ctx.translate(px+TILE, py); ctx.scale(-1,1); }
+  else ctx.translate(px, py);
+  ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.fillRect(6, TILE-4, 12, 3);
+  if(kind==="matt"){
+    ctx.fillStyle = "#6b8f4e"; ctx.fillRect(7, 11, 10, 7);   // olive shirt
+    ctx.fillStyle = "#c9b184"; ctx.fillRect(7, 18, 10, 3);   // khaki shorts
+    ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 6, 8, 6);     // face
+    ctx.fillStyle = "#5a4128"; ctx.fillRect(7, 3, 10, 4);    // hair
+    ctx.fillStyle = "#4a7a4e"; ctx.fillRect(6, 2, 12, 2.5);  // cap
+    ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 21, 3, 2); ctx.fillRect(13, 21, 3, 2);
+  } else {
+    const p = n.palette;
+    ctx.fillStyle = p.shirt; ctx.fillRect(7, 11, 10, 9);
+    ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 6, 8, 6);
+    if(p.hat){ ctx.fillStyle = p.hat; ctx.fillRect(6, 3, 12, 3); }
+    else{ ctx.fillStyle = "#3a3128"; ctx.fillRect(7, 3, 10, 3); }
+    ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 20, 3, 3); ctx.fillRect(13, 20, 3, 3);
+  }
+  ctx.restore();
+  if(n.bubbleT>0 && n.bubble) drawBubble(px+TILE/2, py, n.bubble);
+}
+function drawNPCs(){
+  if(!S.matt) return;
+  S.visitors.forEach(v=>drawPerson(v, "visitor"));
+  drawPerson(S.matt, "matt");
+}
+
+/* ---------------- rendering ---------------- */
+const cv = el("game"), ctx = cv.getContext("2d");
+function hash(x,y){ return ((x*7349 + y*9127) % 97); }
+
+function render(){
+  const shade = currentShade();
+  for(let y=0;y<H;y++) for(let x=0;x<W;x++){
+    drawTile(x,y,map[y][x]);
+  }
+  // shade overlay
+  ctx.fillStyle = "rgba(30,42,78,.34)";
+  shade.forEach(k=>{
+    const x = k%W, y = (k-x)/W;
+    ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+  });
+  // ghost shadow preview
+  if(S.ghost>0){
+    const gShade = computeShade(Math.min(DAY_END, S.t + S.ghost));
+    ctx.strokeStyle = "rgba(90,190,220,.85)"; ctx.lineWidth = 2; ctx.setLineDash([4,3]);
+    gShade.forEach(k=>{
+      if(shade.has(k)) return;
+      const x = k%W, y = (k-x)/W;
+      ctx.strokeRect(x*TILE+2, y*TILE+2, TILE-4, TILE-4);
+    });
+    ctx.setLineDash([]);
+  }
+  // targets
+  TARGETS.forEach(t=>{
+    const px = t.x*TILE, py = t.y*TILE, done = S.shots[t.id];
+    ctx.fillStyle = done? "rgba(74,122,78,.9)" : "rgba(244,232,207,.95)";
+    ctx.strokeStyle = "#3a3128"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(px+TILE/2, py+6, 8, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = done? "#f4e8cf" : "#3a3128";
+    ctx.font = "10px monospace"; ctx.textAlign="center";
+    ctx.fillText(done? "\u2713" : "\uD83D\uDCF7", px+TILE/2, py+10);
+  });
+  drawNPCs();
+  drawBrittany();
+  // day tint
+  const n = (S.t - DAY_START)/(DAY_END - DAY_START);
+  let tint = null;
+  if(n < 0.25) tint = "rgba(255,196,110," + (0.14*(1-n/0.25)) + ")";
+  else if(n > 0.72) tint = "rgba(255,140,70," + (0.2*(n-0.72)/0.28) + ")";
+  if(tint){ ctx.fillStyle = tint; ctx.fillRect(0,0,cv.width,cv.height); }
+  drawSundial();
+}
+
+function drawTile(x,y,c){
+  const px = x*TILE, py = y*TILE, h = hash(x,y);
+  switch(c){
+    case ".": case "F": case "E":
+      ctx.fillStyle = "#d9c49a"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#c9b184"; if(h%3===0) ctx.fillRect(px+4+(h%12), py+6+(h%9), 4, 4);
+      break;
+    case ",":
+      ctx.fillStyle = h%2? "#7fb069" : "#79a863"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#6a9a55"; if(h%4===0) ctx.fillRect(px+3+(h%10), py+3+(h%11), 3, 5);
+      break;
+    case "w":
+      ctx.fillStyle = "#5b98af"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#79b4c9";
+      const wob = Math.floor(Date.now()/450+h)%3;
+      ctx.fillRect(px+3, py+6+wob*4, 12, 2); ctx.fillRect(px+10, py+16-wob*3, 9, 2);
+      break;
+    case "f":{
+      ctx.fillStyle = "#5c8a4e"; ctx.fillRect(px,py,TILE,TILE);
+      const cols = ["#d96c8a","#e8b23c","#b06cd9","#c25b4a","#f4e8cf"];
+      for(let i=0;i<4;i++){
+        ctx.fillStyle = cols[(h+i)%cols.length];
+        ctx.fillRect(px+3+((h+i*5)%16), py+3+((h*3+i*7)%16), 4, 4);
+      }
+      break;}
+    case "t":
+      ctx.fillStyle = "#7fb069"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#2c5236"; ctx.fillRect(px+2,py+4,TILE-4,TILE-8);
+      ctx.fillStyle = "#3c6e47"; ctx.fillRect(px+4,py+2,TILE-8,TILE-6);
+      ctx.fillStyle = "#4f8a58"; ctx.fillRect(px+6,py+4,7,6);
+      ctx.fillStyle = "#5a4128"; ctx.fillRect(px+TILE/2-2, py+TILE-6, 4, 6);
+      break;
+    case "b":
+      ctx.fillStyle = "#b09a7a"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#8a7350"; ctx.fillRect(px,py,TILE,7);
+      ctx.fillStyle = "#f4e8cf"; ctx.fillRect(px+5,py+11,6,7); ctx.fillRect(px+14,py+11,6,7);
+      break;
+    case "C":
+      ctx.fillStyle = "#9a8f82"; ctx.fillRect(px,py,TILE,TILE);
+      ctx.fillStyle = "#847a6e"; ctx.fillRect(px+2+(h%8),py+3,8,5); ctx.fillRect(px+4,py+13+(h%5),9,5);
+      ctx.fillStyle = "#b0a695"; ctx.fillRect(px+13,py+4+(h%6),5,4);
+      break;
+  }
+  if(c==="F"){
+    if(S.usedF && S.usedF[y*W+x]){
+      // dry fountain: grey basin, no water
+      ctx.fillStyle = "#9a8f82"; ctx.fillRect(px+7,py+8,10,12);
+      ctx.fillStyle = "#847a6e"; ctx.fillRect(px+9,py+4,6,6);
+      ctx.strokeStyle = "#6b5d4a"; ctx.lineWidth=1.5; ctx.strokeRect(px+7,py+8,10,12);
+    }else{
+      ctx.fillStyle = "#5b98af"; ctx.fillRect(px+7,py+8,10,12);
+      ctx.fillStyle = "#bfe0ea"; ctx.fillRect(px+9,py+4,6,6);
+      ctx.strokeStyle = "#3a3128"; ctx.lineWidth=1.5; ctx.strokeRect(px+7,py+8,10,12);
+    }
+  }
+  if(c==="E"){
+    ctx.fillStyle = "#8a5a30"; ctx.fillRect(px+2,py+2,5,TILE-4); ctx.fillRect(px+TILE-7,py+2,5,TILE-4);
+    ctx.fillRect(px+2,py+2,TILE-4,5);
+    ctx.fillStyle = "#e8b23c"; ctx.fillRect(px+9,py+9,6,6);
+  }
+}
+
+function drawBrittany(){
+  const px = S.px*TILE, py = S.py*TILE;
+  ctx.save();
+  if(S.face<0){ ctx.translate(px+TILE, py); ctx.scale(-1,1); }
+  else ctx.translate(px, py);
+  // shadow blob
+  ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(5, TILE-4, 14, 3);
+  // dress
+  ctx.fillStyle = "#3f8f8a"; ctx.fillRect(7, 11, 10, 9);
+  // face
+  ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 6, 8, 6);
+  // sunhat
+  ctx.fillStyle = "#e8b23c"; ctx.fillRect(4, 4, 16, 3); ctx.fillRect(7, 1, 10, 4);
+  ctx.fillStyle = "#c25b4a"; ctx.fillRect(7, 4, 10, 1.5);
+  // camera
+  ctx.fillStyle = "#3a3128"; ctx.fillRect(15, 13, 7, 5);
+  ctx.fillStyle = "#bfe0ea"; ctx.fillRect(17, 14, 3, 3);
+  // legs
+  ctx.fillStyle = "#e8c9a0"; ctx.fillRect(8, 20, 3, 3); ctx.fillRect(13, 20, 3, 3);
+  ctx.restore();
+}
+
+/* sundial */
+const sd = el("sundial"), sctx = sd.getContext("2d");
+function drawSundial(){
+  const w = sd.width, cx = w/2, cy = w/2;
+  sctx.clearRect(0,0,w,w);
+  sctx.strokeStyle = "#6b5d4a"; sctx.lineWidth = 1;
+  for(let i=0;i<12;i++){
+    const a = i*Math.PI/6;
+    sctx.beginPath();
+    sctx.moveTo(cx+Math.cos(a)*26, cy+Math.sin(a)*26);
+    sctx.lineTo(cx+Math.cos(a)*30, cy+Math.sin(a)*30);
+    sctx.stroke();
+  }
+  const p = shadowParams(S.t + S.ghost);
+  const mag = Math.hypot(p.dx,p.dy)||1;
+  const L = 10 + 18*p.len;
+  sctx.strokeStyle = S.ghost>0 ? "#4a90c2" : "#3a3128"; sctx.lineWidth = 3;
+  sctx.beginPath(); sctx.moveTo(cx,cy);
+  sctx.lineTo(cx + (p.dx/mag)*L, cy + (p.dy/mag)*L); sctx.stroke();
+  sctx.fillStyle = "#e8b23c"; sctx.beginPath(); sctx.arc(cx,cy,4,0,7); sctx.fill();
+}
+const scrub = el("scrub"), ghostNote = el("ghostNote");
+scrub.addEventListener("input", ()=>{
+  S.ghost = +scrub.value;
+  ghostNote.textContent = S.ghost>0 ? "showing shadows at " + fmt(Math.min(DAY_END, S.t + S.ghost)) : "showing shadows: now";
+});
+
+/* ---------------- audio ---------------- */
+let AC = null;
+function beep(freq, dur, delay){
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    g.gain.value = 0.06; o.connect(g); g.connect(AC.destination);
+    const t0 = AC.currentTime + (delay||0);
+    o.start(t0); g.gain.setValueAtTime(0.06,t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0+dur); o.stop(t0+dur+0.02);
+  }catch(e){}
+}
+
+/* ---------------- loop & boot ---------------- */
+function el(id){ return document.getElementById(id); }
+function pick(a){ return a[Math.floor(Math.random()*a.length)]; }
+
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  update(dt); render();
+  requestAnimationFrame(loop);
+}
+el("startBtn").addEventListener("click", ()=>{
+  el("startOverlay").style.display = "none";
+  S.running = true; beep(520,.1); beep(660,.12,.1);
+});
+el("retryBtn").addEventListener("click", ()=>{
+  el("endOverlay").style.display = "none";
+  reset(); el("startOverlay").style.display = "flex";
+});
+reset();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
